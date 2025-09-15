@@ -21,7 +21,7 @@ def main():
     # 检查rois.json内容
     print("\n2. 检查rois.json...")
     try:
-        with open("../data/rois.json", "r", encoding="utf-8") as f:
+        with open("data/rois.json", "r", encoding="utf-8") as f:
             rois = json.load(f)
         print(f"  ✓ rois.json 加载成功，包含 {len(rois)} 个板块")
         

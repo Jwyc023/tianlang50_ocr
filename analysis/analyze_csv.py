@@ -28,7 +28,7 @@ PANEL_NAMES = [
 
 def load_latest_csv() -> pd.DataFrame:
 	"""加载最新的CSV文件"""
-	csv_files = glob.glob("../data/ticks_*.csv")
+    csv_files = glob.glob("../data/ticks_*.csv")
     if not csv_files:
         print("❌ 未找到CSV文件！请先运行监控脚本。")
         return None

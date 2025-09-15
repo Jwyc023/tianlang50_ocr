@@ -34,7 +34,7 @@ def main():
 	
 	# 检查rois.json
 	try:
-		rois = load_rois("../data/rois.json")
+         rois = load_rois("data/rois.json")
 		print(f"✓ ROI配置加载成功，包含 {len(rois)} 个板块")
 	except Exception as e:
 		print(f"✗ ROI配置加载失败: {e}")

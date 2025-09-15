@@ -157,20 +157,33 @@ def save_failed_screenshot(img: np.ndarray, panel_name: str, field_type: str,
 	"""保存识别失败时的截图"""
 	x, y, w, h = roi_coords
 	
+	# 将中文板块名转换为英文编号，避免文件名乱码
+	panel_mapping = {
+		"中证1000": "panel01",
+		"中证500": "panel02", 
+		"沪深300": "panel03",
+		"上证50": "panel04",
+		"上证指数": "panel05",
+		"深证成指": "panel06",
+		"科创50": "panel07",
+		"创业板指": "panel08"
+	}
+	panel_id = panel_mapping.get(panel_name, "unknown")
+	
 	# 保存原始ROI区域
 	crop_img = img[y:y+h, x:x+w]
-	cv2.imwrite(f"{screenshot_dir}/{panel_name}_{field_type}_raw_{timestamp}.png", crop_img)
+	cv2.imwrite(f"{screenshot_dir}/{panel_id}_{field_type}_raw_{timestamp}.png", crop_img)
 	
 	# 保存预处理后的图像
 	processed_img = preprocess_for_ocr(crop_img, is_grade=(field_type == "grade"))
-	cv2.imwrite(f"{screenshot_dir}/{panel_name}_{field_type}_processed_{timestamp}.png", processed_img)
+	cv2.imwrite(f"{screenshot_dir}/{panel_id}_{field_type}_processed_{timestamp}.png", processed_img)
 	
 	# 保存带ROI标记的全屏截图
 	img_marked = img.copy()
 	cv2.rectangle(img_marked, (x, y), (x+w, y+h), (0, 0, 255), 3)  # 红色框标记
-	cv2.putText(img_marked, f"{panel_name}_{field_type}", (x, y-10), 
+	cv2.putText(img_marked, f"{panel_id}_{field_type}", (x, y-10), 
 	            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-	cv2.imwrite(f"{screenshot_dir}/{panel_name}_{field_type}_marked_{timestamp}.png", img_marked)
+	cv2.imwrite(f"{screenshot_dir}/{panel_id}_{field_type}_marked_{timestamp}.png", img_marked)
 
 def process_panel_with_logging(img: np.ndarray, panel_name: str, rois: Dict, 
                               screenshot_dir: str, timestamp: str) -> Tuple[float, str]:
@@ -228,13 +241,26 @@ def main():
 	"""主函数 - 带详细日志的监控"""
 	print("=== 带日志的监控系统启动 ===")
 	
+	# 确保data目录存在
+	if not os.path.exists("../data"):
+		os.makedirs("../data")
+		print("✓ 创建data目录")
+	
 	# 设置日志系统
 	log_dir, screenshot_dir = setup_logging()
 	logging.info("日志系统初始化完成")
 	
 	# 加载ROI配置
-	rois = load_rois("../data/rois.json")
-	logging.info(f"ROI配置加载成功，监控 {len(rois)} 个板块")
+	try:
+		rois = load_rois("../data/rois.json")
+		logging.info(f"ROI配置加载成功，监控 {len(rois)} 个板块")
+	except FileNotFoundError:
+		print("❌ 错误：找不到 ../data/rois.json 文件！")
+		print("请先运行 python tools/calibrate_rois.py 生成ROI配置")
+		return
+	except Exception as e:
+		print(f"❌ 错误：加载ROI配置失败: {e}")
+		return
 	
 	# 创建输出文件
 	out_csv = f"../data/ticks_logged_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"

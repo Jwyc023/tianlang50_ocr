@@ -93,9 +93,9 @@ def main() -> None:
 
 		cv2.destroyAllWindows()
 
-	with open("../data/rois.json", "w", encoding="utf-8") as f:
+	with open("data/rois.json", "w", encoding="utf-8") as f:
 		json.dump(rois, f, ensure_ascii=False, indent=2)
-	print("已保存到 ../data/rois.json。若识别不准，可重新运行本脚本校准。")
+	print("已保存到 data/rois.json。若识别不准，可重新运行本脚本校准。")
 
 
 if __name__ == "__main__":

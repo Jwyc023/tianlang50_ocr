@@ -350,10 +350,17 @@ def main():
 					# 每10秒保存一次调试图像，避免文件过多
 					timestamp = datetime.now().strftime("%H%M%S")
 					if int(timestamp) % 10 == 0:
-						cv2.imwrite(f"{debug_dir}/{name}_power_raw_{timestamp}.png", crop_power)
-						cv2.imwrite(f"{debug_dir}/{name}_power_proc_{timestamp}.png", pp)
-						cv2.imwrite(f"{debug_dir}/{name}_grade_raw_{timestamp}.png", crop_grade)
-						cv2.imwrite(f"{debug_dir}/{name}_grade_proc_{timestamp}.png", pg)
+						# 将中文板块名转换为英文编号，避免文件名乱码
+						panel_mapping = {
+							"中证1000": "panel01", "中证500": "panel02", "沪深300": "panel03", "上证50": "panel04",
+							"上证指数": "panel05", "深证成指": "panel06", "科创50": "panel07", "创业板指": "panel08"
+						}
+						panel_id = panel_mapping.get(name, "unknown")
+						
+						cv2.imwrite(f"{debug_dir}/{panel_id}_power_raw_{timestamp}.png", crop_power)
+						cv2.imwrite(f"{debug_dir}/{panel_id}_power_proc_{timestamp}.png", pp)
+						cv2.imwrite(f"{debug_dir}/{panel_id}_grade_raw_{timestamp}.png", crop_grade)
+						cv2.imwrite(f"{debug_dir}/{panel_id}_grade_proc_{timestamp}.png", pg)
 
 					# 将识别结果添加到列表中
 					powers.append(val_power)

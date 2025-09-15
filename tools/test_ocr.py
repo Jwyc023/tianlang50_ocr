@@ -101,7 +101,7 @@ def main():
 	input()
 	
 	try:
-		rois = load_rois("../data/rois.json")
+          rois = load_rois("data/rois.json")
 		print(f"成功加载ROI配置，包含 {len(rois)} 个板块")
 	except FileNotFoundError:
 		print("错误：找不到 rois.json 文件！")
@@ -135,15 +135,22 @@ def main():
 			print(f"主力等级裁剪图像尺寸: {crop_power.shape}")
 			print(f"级别裁剪图像尺寸: {crop_grade.shape}")
 			
+			# 将中文板块名转换为英文编号，避免文件名乱码
+			panel_mapping = {
+				"中证1000": "panel01", "中证500": "panel02", "沪深300": "panel03", "上证50": "panel04",
+				"上证指数": "panel05", "深证成指": "panel06", "科创50": "panel07", "创业板指": "panel08"
+			}
+			panel_id = panel_mapping.get(name, "unknown")
+			
 			# 保存原始图像
-			cv2.imwrite(f"{name}_power_raw.png", crop_power)
-			cv2.imwrite(f"{name}_grade_raw.png", crop_grade)
+			cv2.imwrite(f"{panel_id}_power_raw.png", crop_power)
+			cv2.imwrite(f"{panel_id}_grade_raw.png", crop_grade)
 			print(f"已保存 {name} 的原始图像")
 			
 			# 主力等级识别
 			print("正在处理主力等级...")
 			pp = preprocess_for_ocr(crop_power, is_grade=False)
-			cv2.imwrite(f"{name}_power_proc.png", pp)
+			cv2.imwrite(f"{panel_id}_power_proc.png", pp)
 			txt_power = ocr_text(pp, psm=7)
 			val_power = parse_power(txt_power)
 			print(f"主力等级: '{txt_power}' -> {val_power}")
@@ -151,7 +158,7 @@ def main():
 			# 级别识别
 			print("正在处理级别...")
 			pg = preprocess_for_ocr(crop_grade, is_grade=True)
-			cv2.imwrite(f"{name}_grade_proc.png", pg)
+			cv2.imwrite(f"{panel_id}_grade_proc.png", pg)
 			txt_grade = ocr_text(pg, psm=8)
 			val_grade = normalize_grade(txt_grade)
 			print(f"级别: '{txt_grade}' -> {val_grade}")

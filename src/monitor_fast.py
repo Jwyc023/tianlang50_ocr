@@ -162,8 +162,8 @@ def main():
 	print("=== 高性能监控系统启动 ===")
 	
 	# 初始化
-	rois = load_rois("../data/rois.json")
-	out_csv = f"../data/ticks_fast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        rois = load_rois("../data/rois.json")
+        out_csv = f"../data/ticks_fast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 	
 	header = ["timestamp"]
 	for name in PANEL_NAMES:

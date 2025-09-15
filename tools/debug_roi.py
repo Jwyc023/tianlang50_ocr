@@ -24,7 +24,7 @@ PANEL_NAMES = [
 def load_rois():
 	"""加载ROI配置"""
 	try:
-		with open("../data/rois.json", "r", encoding="utf-8") as f:
+          with open("data/rois.json", "r", encoding="utf-8") as f:
 			rois = json.load(f)
         print(f"✓ 加载ROI配置成功，包含 {len(rois)} 个板块")
         return rois
