@@ -170,15 +170,19 @@ def process_panel(img: np.ndarray, name: str, rois: Dict) -> Tuple[float, str]:
 
 		# 快速OCR
 		txt_power = fast_ocr(pp, psm=7, is_grade=False)
-		txt_grade = fast_ocr(pg, psm=10, is_grade=True)  # 使用单字符模式
+		txt_grade = fast_ocr(pg, psm=8, is_grade=True)  # 使用单词模式（优化后）
 
 		# 解析结果
 		val_power = parse_power(txt_power)
 		val_grade = normalize_grade(txt_grade)
+		
+		print(f"DEBUG {name}: OCR文本='{txt_grade}', 解析结果='{val_grade}'")
 
 		return val_power, val_grade
 	except Exception as e:
 		print(f"处理板块 {name} 时出错: {e}")
+		import traceback
+		traceback.print_exc()
 		return float("nan"), ""
 
 def load_rois(path: str) -> Dict[str, Dict[str, Tuple[int, int, int, int]]]:
@@ -258,6 +262,7 @@ def main():
 				for i in range(8):
 					row.append(powers[i])
 					row.append(grades[i])
+					print(f"DEBUG CSV写入: {PANEL_NAMES[i]} 主力等级={powers[i]}, 级别='{grades[i]}'")
 				row.append(signal)
 				row.append(screenshot_filename)  # 添加截图文件名
 				
