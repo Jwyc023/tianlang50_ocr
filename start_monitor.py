@@ -24,6 +24,8 @@ def print_menu():
     print("9. 查看失败截图")
     print("10. 调试ROI区域")
     print("11. 环境检查")
+    print("12. Fast数据异常分析")
+    print("13. 调试特定时间OCR问题")
     print("0. 退出")
     print("=" * 50)
 
@@ -40,7 +42,7 @@ def main():
     """主函数"""
     while True:
         print_menu()
-        choice = input("请选择操作 (0-11): ").strip()
+        choice = input("请选择操作 (0-13): ").strip()
         
         if choice == "0":
             print("👋 再见！")
@@ -78,6 +80,12 @@ def main():
         elif choice == "11":
             print("🔧 启动环境检查...")
             run_command("python tools/simple_test.py")
+        elif choice == "12":
+            print("🔍 启动Fast数据异常分析...")
+            run_command("python analysis/analyze_fast_data.py")
+        elif choice == "13":
+            print("🔧 启动特定时间OCR调试...")
+            run_command("python tools/debug_ocr_specific.py")
         else:
             print("❌ 无效选择，请重新输入")
         

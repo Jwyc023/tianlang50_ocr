@@ -127,8 +127,9 @@ def parse_power(text: str) -> float:
 	返回：
 	- 解析后的浮点数（失败时返回NaN）
 	"""
-	# 清理常见OCR错误
-	t = text.replace(" ", "").replace("O", "0").replace("o", "0").replace("—", "-")
+	# 移除中文标签和清理常见OCR错误
+	t = text.replace("主力等级：", "").replace("主力等级", "").replace(" ", "")
+	t = t.replace("O", "0").replace("o", "0").replace("—", "-")
 	t = t.replace("+", "+").replace(",", "").replace("％", "%").replace("%", "")
 	
 	# 提取数字字符（包括正负号和小数点）
@@ -160,15 +161,28 @@ def normalize_grade(text: str) -> str:
 	返回：
 	- 规范化后的级别字符串（如"A", "AA", "-B"等）
 	"""
-	# 清理文本，处理常见OCR错误
-	t = text.upper().replace(" ", "").replace("- ", "-").replace("—", "-")
+	# 移除中文标签和清理文本，处理常见OCR错误
+	t = text.replace("级别：", "").replace("级别", "").replace(" ", "")
+	t = t.upper().replace("- ", "-").replace("—", "-")
 	t = t.replace("O", "0").replace("o", "0")  # 处理数字0的误识别
+	
+	# 处理更多负号变体
+	t = t.replace("一", "-").replace("_", "-").replace("—", "-")
 	
 	# 提取负号前缀
 	sign = ""
-	if t.startswith("-"):
+	if t.startswith("-") or t.startswith("一") or t.startswith("_") or t.startswith("—"):
 		sign = "-"
 		t = t[1:]
+	elif "-" in t or "一" in t or "_" in t or "—" in t:
+		# 负号在中间，提取负号前的部分
+		for sep in ["-", "一", "_", "—"]:
+			if sep in t:
+				parts = t.split(sep, 1)
+				if len(parts) == 2:
+					sign = "-"
+					t = parts[1]  # 取负号后的部分
+				break
 	
 	# 宽松的级别匹配规则（按优先级从高到低）
 	grade = ""

@@ -46,9 +46,9 @@ def fast_preprocess(img: np.ndarray, is_grade: bool = False) -> np.ndarray:
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	
 	if is_grade:
-		# 级别：简单放大 + 二值化
-		gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_LINEAR)  # 使用更快的插值
-		_, thr = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+		# 级别：适度放大 + 自适应阈值（更适合单字符）
+		gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
+		thr = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
 	else:
 		# 主力等级：简单放大 + 自适应阈值
 		gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
@@ -56,35 +56,61 @@ def fast_preprocess(img: np.ndarray, is_grade: bool = False) -> np.ndarray:
 	
 	return thr
 
-def fast_ocr(img: np.ndarray, psm: int = 7) -> str:
+def fast_ocr(img: np.ndarray, psm: int = 7, is_grade: bool = False) -> str:
 	"""快速OCR识别"""
-	# 使用更快的OCR配置
-	cfg = f"--psm {psm} -l eng --oem 3"  # 只使用英文，使用LSTM引擎
+	# ROI包含中文标签，需要中英文支持
+	cfg = f"--psm {psm} -l eng+chi_sim --oem 3"
 	text = pytesseract.image_to_string(img, config=cfg)
 	return text.strip()
 
 def parse_power(text: str) -> float:
-	"""解析主力等级"""
-	t = text.replace(" ", "").replace("O", "0").replace("o", "0").replace("—", "-")
+	"""解析主力等级（从包含'主力等级：'的文本中提取数字）"""
+	# 移除中文标签和空格
+	t = text.replace("主力等级：", "").replace("主力等级", "").replace(" ", "")
+	t = t.replace("O", "0").replace("o", "0").replace("—", "-")
 	t = t.replace("+", "+").replace(",", "").replace("％", "%").replace("%", "")
+	
+	# 提取数字部分
 	num = ""
 	for ch in t:
 		if ch in "+-.0123456789":
 			num += ch
+	
 	try:
-		return float(num)
+		return float(num) if num else float("nan")
 	except Exception:
 		return float("nan")
 
 def normalize_grade(text: str) -> str:
-	"""规范化级别"""
-	t = text.upper().replace(" ", "").replace("- ", "-").replace("—", "-")
+	"""规范化级别（从包含'级别：'的文本中提取级别）"""
+	# 移除中文标签
+	t = text.replace("级别：", "").replace("级别", "")
+	
+	# 处理各种分隔符和空格
+	t = t.replace(":", "").replace("：", "").replace(" ", "").replace("\t", "")
+	t = t.upper().replace("- ", "-").replace("—", "-")
 	t = t.replace("O", "0").replace("o", "0")
 	
+	# 处理更多负号变体
+	t = t.replace("一", "-").replace("_", "-").replace("—", "-")
+	
+	# 调试输出
+	print(f"DEBUG normalize_grade: 原始='{text}' -> 处理后='{t}'")
+	
 	sign = ""
-	if t.startswith("-"):
+	# 检查各种负号位置
+	if t.startswith("-") or t.startswith("一") or t.startswith("_") or t.startswith("—"):
 		sign = "-"
 		t = t[1:]
+	elif "-" in t or "一" in t or "_" in t or "—" in t:
+		# 负号在中间，提取负号后的部分
+		for sep in ["-", "一", "_", "—"]:
+			if sep in t:
+				parts = t.split(sep, 1)
+				if len(parts) == 2:
+					sign = "-"
+					t = parts[1]  # 取负号后的部分
+				break
 	
 	grade = ""
 	if "AAA" in t or t.startswith("3A"):
@@ -98,9 +124,12 @@ def normalize_grade(text: str) -> str:
 	elif t.startswith("C") or "C" in t:
 		grade = "C"
 	else:
+		print(f"DEBUG normalize_grade: 无法识别级别，剩余文本='{t}'")
 		return ""
 	
-	return sign + grade
+	result = sign + grade
+	print(f"DEBUG normalize_grade: 最终结果='{result}'")
+	return result
 
 def grade_rank(grade: str) -> int:
 	"""级别排序"""
@@ -140,8 +169,8 @@ def process_panel(img: np.ndarray, name: str, rois: Dict) -> Tuple[float, str]:
 		pg = fast_preprocess(crop_grade, is_grade=True)
 
 		# 快速OCR
-		txt_power = fast_ocr(pp, psm=7)
-		txt_grade = fast_ocr(pg, psm=8)
+		txt_power = fast_ocr(pp, psm=7, is_grade=False)
+		txt_grade = fast_ocr(pg, psm=10, is_grade=True)  # 使用单字符模式
 
 		# 解析结果
 		val_power = parse_power(txt_power)
@@ -162,17 +191,24 @@ def main():
 	print("=== 高性能监控系统启动 ===")
 	
 	# 初始化
-        rois = load_rois("../data/rois.json")
-        out_csv = f"../data/ticks_fast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+	rois = load_rois("../data/rois.json")
+	out_csv = f"../data/ticks_fast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+	
+	# 创建截图保存目录
+	screenshot_dir = "../data/fast_screenshots"
+	if not os.path.exists(screenshot_dir):
+		os.makedirs(screenshot_dir)
+		print(f"✓ 创建截图目录: {screenshot_dir}")
 	
 	header = ["timestamp"]
 	for name in PANEL_NAMES:
 		header += [f"{name}_主力等级", f"{name}_级别"]
-	header += ["结论"]
+	header += ["结论", "截图文件"]
 
 	print(f"✓ 监控 {len(rois)} 个板块")
 	print(f"✓ 输出文件: {out_csv}")
-	print("✓ 使用高性能模式（并行处理）")
+	print(f"✓ 截图目录: {screenshot_dir}")
+	print("✓ 使用高性能模式（并行处理 + 截图保存）")
 	print("\n=== 开始监控循环 ===")
 
 	with open(out_csv, "w", newline="", encoding="utf-8-sig") as fcsv:
@@ -190,30 +226,40 @@ def main():
 				# 截图
 				img = grab_fullscreen(sct)
 				
+				# 保存完整页面截图（带时间戳）
+				timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+				screenshot_filename = f"{screenshot_dir}/fullscreen_{timestamp}.png"
+				cv2.imwrite(screenshot_filename, img)
+				
+				# 记录当前时间戳（用于CSV）
+				current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+				
 				# 并行处理所有板块
 				with ThreadPoolExecutor(max_workers=4) as executor:
-					futures = []
+					futures = {}
 					for name in PANEL_NAMES:
 						future = executor.submit(process_panel, img, name, rois)
-						futures.append(future)
+						futures[name] = future
 					
-					# 收集结果
+					# 收集结果（按顺序）
 					powers = []
 					grades = []
-					for future in futures:
-						power, grade = future.result()
+					for name in PANEL_NAMES:
+						power, grade = futures[name].result()
 						powers.append(power)
 						grades.append(grade)
+						print(f"DEBUG {name}: 主力等级={power}, 级别='{grade}'")
 				
 				# 信号判断
 				signal = decide_signal(powers, grades)
 				
-				# 写入CSV
-				row = [datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
+				# 写入CSV（包含截图文件名）
+				row = [current_time]
 				for i in range(8):
 					row.append(powers[i])
 					row.append(grades[i])
 				row.append(signal)
+				row.append(screenshot_filename)  # 添加截图文件名
 				
 				with lock:
 					writer.writerow(row)

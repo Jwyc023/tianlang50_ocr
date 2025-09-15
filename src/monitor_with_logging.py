@@ -84,27 +84,43 @@ def ocr_text(img: np.ndarray, psm: int = 7) -> str:
 	return text.strip()
 
 def parse_power(text: str) -> float:
-	"""解析主力等级"""
-	t = text.replace(" ", "").replace("O", "0").replace("o", "0").replace("—", "-")
+	"""解析主力等级（从包含'主力等级：'的文本中提取数字）"""
+	# 移除中文标签和空格
+	t = text.replace("主力等级：", "").replace("主力等级", "").replace(" ", "")
+	t = t.replace("O", "0").replace("o", "0").replace("—", "-")
 	t = t.replace("+", "+").replace(",", "").replace("％", "%").replace("%", "")
 	num = ""
 	for ch in t:
 		if ch in "+-.0123456789":
 			num += ch
 	try:
-		return float(num)
+		return float(num) if num else float("nan")
 	except Exception:
 		return float("nan")
 
 def normalize_grade(text: str) -> str:
-	"""规范化级别"""
-	t = text.upper().replace(" ", "").replace("- ", "-").replace("—", "-")
+	"""规范化级别（从包含'级别：'的文本中提取级别）"""
+	# 移除中文标签和空格
+	t = text.replace("级别：", "").replace("级别", "").replace(" ", "")
+	t = t.upper().replace("- ", "-").replace("—", "-")
 	t = t.replace("O", "0").replace("o", "0")
 	
+	# 处理更多负号变体
+	t = t.replace("一", "-").replace("_", "-").replace("—", "-")
+	
 	sign = ""
-	if t.startswith("-"):
+	if t.startswith("-") or t.startswith("一") or t.startswith("_") or t.startswith("—"):
 		sign = "-"
 		t = t[1:]
+	elif "-" in t or "一" in t or "_" in t or "—" in t:
+		# 负号在中间，提取负号前的部分
+		for sep in ["-", "一", "_", "—"]:
+			if sep in t:
+				parts = t.split(sep, 1)
+				if len(parts) == 2:
+					sign = "-"
+					t = parts[1]  # 取负号后的部分
+				break
 	
 	grade = ""
 	if "AAA" in t or t.startswith("3A"):
