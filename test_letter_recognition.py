@@ -171,3 +171,4 @@ def analyze_screenshot(screenshot_path, rois, debug_dir, record_num):
 
 if __name__ == "__main__":
     test_letter_recognition()
+
