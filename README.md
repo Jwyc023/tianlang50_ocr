@@ -190,3 +190,4 @@ python tools/calibrate_rois.py
 ---
 
 **注意**：使用前请确保天狼50软件正常运行，并已正确配置ROI区域。
+

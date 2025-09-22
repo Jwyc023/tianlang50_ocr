@@ -42,24 +42,48 @@ def grab_fullscreen(sct: mss) -> np.ndarray:
 	return img[:, :, :3]
 
 def fast_preprocess(img: np.ndarray, is_grade: bool = False) -> np.ndarray:
-	"""快速图像预处理"""
+	"""优化的图像预处理"""
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	
 	if is_grade:
-		# 级别：适度放大 + 自适应阈值（更适合单字符）
-		gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
-		thr = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+		# 级别：增强预处理，更适合字母识别
+		# 1. 更大倍数放大
+		gray = cv2.resize(gray, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+		
+		# 2. 高斯模糊去噪
+		gray = cv2.GaussianBlur(gray, (3, 3), 0)
+		
+		# 3. 形态学操作增强字符
+		kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+		gray = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel)
+		
+		# 4. 自适应阈值 + Otsu阈值结合
+		thr1 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+		_, thr2 = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+		
+		# 5. 结合两种阈值结果
+		thr = cv2.bitwise_and(thr1, thr2)
+		
+		# 6. 再次形态学操作清理
+		kernel_clean = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
+		thr = cv2.morphologyEx(thr, cv2.MORPH_OPEN, kernel_clean)
+		
 	else:
-		# 主力等级：简单放大 + 自适应阈值
+		# 主力等级：保持原有处理
 		gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
 		thr = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
 	
 	return thr
 
 def fast_ocr(img: np.ndarray, psm: int = 7, is_grade: bool = False) -> str:
-	"""快速OCR识别"""
-	# ROI包含中文标签，需要中英文支持
-	cfg = f"--psm {psm} -l eng+chi_sim --oem 3"
+	"""优化的OCR识别"""
+	if is_grade:
+		# 级别识别：使用单字符模式，纯英文
+		cfg = "--psm 10 -l eng --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ-"
+	else:
+		# 主力等级：保持原有配置
+		cfg = f"--psm {psm} -l eng+chi_sim --oem 3"
+	
 	text = pytesseract.image_to_string(img, config=cfg)
 	return text.strip()
 

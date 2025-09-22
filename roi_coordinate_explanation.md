@@ -121,3 +121,4 @@ if x >= 0 and y >= 0 and x + width <= img_width and y + height <= img_height:
 - **级别区域**：从(395, 565)开始，宽80像素，高22像素
 
 这样就能精确定位到需要OCR识别的区域了！
+
