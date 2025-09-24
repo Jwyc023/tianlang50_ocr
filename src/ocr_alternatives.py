@@ -233,3 +233,4 @@ if __name__ == "__main__":
         print("  - PaddleOCR")
     if EASYOCR_AVAILABLE:
         print("  - EasyOCR")
+
