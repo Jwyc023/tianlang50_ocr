@@ -1,0 +1,17 @@
+{
+  "timeline": {
+    "start_x": 100,
+    "end_x": 1800,
+    "y": 600,
+    "monitor_area_y1": 400,
+    "monitor_area_y2": 700
+  },
+  "time_range": {
+    "start": "09:30",
+    "end": "15:00"
+  },
+  "rois": {},
+  "_comment": "这是一个示例配置文件，请运行 tools/calibrate_timeline.py 生成实际配置"
+}
+
+

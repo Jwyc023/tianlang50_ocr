@@ -101,7 +101,16 @@ class PaddleOCRWrapper:
     def __init__(self):
         self.name = "PaddleOCR"
         # 初始化PaddleOCR，使用轻量级模型
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
+        try:
+            # 尝试新版本的参数
+            self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
+        except Exception:
+            try:
+                # 尝试旧版本的参数
+                self.ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
+            except Exception as e:
+                print(f"PaddleOCR初始化失败: {e}")
+                raise
     
     def recognize(self, img: np.ndarray, is_grade: bool = False) -> str:
         """PaddleOCR识别"""
